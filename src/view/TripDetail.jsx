@@ -1,8 +1,8 @@
 import React from 'react';
 // import { FaMapLocationDot } from 'react-icons/fa';
+import { useSelector } from 'react-redux';
 import { Button } from '@/components/ui/button';
 // import { tripData } from '@/constants/options';
-import { useSelector } from 'react-redux';
 
 
 
