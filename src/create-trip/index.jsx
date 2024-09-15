@@ -2,17 +2,43 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AI_PROMPT, SelelctBudgetOptions, SelelctTravelersList } from '@/constants/options';
 import { chatSession } from '@/service/gemini';
-import React, { useState } from 'react'
+import React, { useState,useEffect } from 'react'
 import GooglePlacesAutocomplete from 'react-google-places-autocomplete';
 import { useDispatch } from 'react-redux';
 import { setResult } from '../store/resultSlice';
 import { useNavigate } from 'react-router-dom';
+
+function getUsageCount() {
+  const count = localStorage.getItem('usageCount');
+  return count ? parseInt(count, 10) : 0;
+}
+
+function incrementUsageCount() {
+  let count = getUsageCount();
+  count += 1;
+  localStorage.setItem('usageCount', count);
+  return count;
+}
+
+function checkUsageLimit() {
+  const usageCount = getUsageCount();
+  if (usageCount >= 3) {
+    return true; // Usage limit reached
+  }
+  return false; // Within limit
+}
 
 function CreateTrip() {
   const [loader, setLoader] = useState(false);
   const [formData, setFormData] = useState({});
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const [limitReached, setLimitReached] = useState(false);
+
+  useEffect(() => {
+    const reached = checkUsageLimit();
+    setLimitReached(reached);
+  }, []);
 
   const handleInputChange = (name, value) => async (event) => {
     if (!value) value = event.target.value;
@@ -21,9 +47,11 @@ function CreateTrip() {
       [name]: value
     });
   };
+ 
 
   const OnGenerateTrip = async () => {
     setLoader(true);
+   
 
     const FINAL_PROMPT = AI_PROMPT
       .replace('{location}', formData.location)
@@ -34,12 +62,15 @@ function CreateTrip() {
 
     const result = await chatSession.sendMessage(FINAL_PROMPT);
     dispatch(setResult(JSON.parse(result.response.text())));
+    incrementUsageCount();
     navigate('/view-trip');
     setLoader(false);
   };
 
   return (
+    
     <div className='container mx-auto px-4 md:px-8 lg:px-16 mt-10'>
+      
       <h2 className='font-bold text-2xl md:text-3xl lg:text-4xl'>Tell us your travel preference</h2>
       <p className='mt-2 text-gray-600 text-lg md:text-xl lg:text-2xl'>
         Just provide some basic information, and our trip planner will generate a customized itinerary based on your preferences.
@@ -96,7 +127,8 @@ function CreateTrip() {
         </div>
         
         <div className='flex justify-end mt-6'>
-          <Button onClick={OnGenerateTrip} disabled={loader}>
+      
+          <Button onClick={OnGenerateTrip} disabled={limitReached || loader}>
             {loader ? "Please wait..." : "Generate Trip"}
           </Button>
         </div>
